@@ -1,5 +1,9 @@
 package com.listener.waterFlowSensor.controller;
 
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.Date;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import com.listener.waterFlowSensor.date.DateAndTime;
+import com.google.gson.Gson;
 import com.listener.waterFlowSensor.domain.WaterFlowSensorDomain;
 import com.listener.waterFlowSensor.mongoDB.MongoDBConnection;
 
@@ -40,7 +44,7 @@ public class WaterFlowSensorController {
 
 	private final Logger LOGGER = LoggerFactory.getLogger(WaterFlowSensorController.class);
 
-	@Scheduled(fixedRate = 60000)
+	@Scheduled(fixedRate = 30000)
 	@Async
 	@GetMapping(value = "/getData")
 	public void getData() {
@@ -48,22 +52,26 @@ public class WaterFlowSensorController {
 
 		double flowRate = Double.parseDouble(sendGETRequest(waterFlowURL));
 		this.domain.setFlowRate(flowRate);
+		
+		String description = sendGETRequest(descriptionURL);
+		this.domain.setDescription(description);
+		
+		Date date = new Date();
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		this.domain.setTimestamp(dateFormat.format(date));
 
-		String userId = sendGETRequest(userURL);
-		this.domain.setUser(userId);
+		String username = sendGETRequest(userURL);
+		this.domain.setUsername(username);
 
 		String deviceId = sendGETRequest(deviceIdURL);
 		this.domain.setDeviceId(deviceId);
-
-		String description = sendGETRequest(descriptionURL);
-		this.domain.setDescription(description);
-
-		DateAndTime time = new DateAndTime();
-		String timestamp = time.getTimestamp();
-		this.domain.setTimestamp(timestamp);
-
+		
+		String weekDay = LocalDate.now().getDayOfWeek().name();
+		this.domain.setWeekDay(weekDay);
+				
 		try {
-			LOGGER.info("!!! Inserindo " + this.domain.toString() + " no MongoDB !!!!");
+			Gson gson = new Gson();
+			LOGGER.info("!!! Inserindo " + gson.toJson(this.domain) + " no MongoDB !!!!");
 			this.mongoDB.store(this.domain);
 		} catch (Exception e) {
 			LOGGER.error("Ocorreu um erro ao inserir no MongoDB", e);

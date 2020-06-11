@@ -10,7 +10,12 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Repository
+@Getter
+@Setter
 public class MongoDBConnection {
 	
 	private MongoClient mongoClient;
@@ -31,30 +36,6 @@ public class MongoDBConnection {
 	public MongoDBConnection() {
 	}
 	
-	public MongoClient getMongoClient() {
-		return mongoClient;
-	}
-
-	public void setMongoClient(MongoClient mongoClient) {
-		this.mongoClient = mongoClient;
-	}
-
-	public MongoDatabase getDatabase() {
-		return database;
-	}
-
-	public void setDatabase(MongoDatabase database) {
-		this.database = database;
-	}
-
-	public MongoCollection<Document> getCollection() {
-		return collection;
-	}
-
-	public void setCollection(MongoCollection<Document> collection) {
-		this.collection = collection;
-	}	
-	
 	public void openConnection() {
 		MongoClientURI uri = new MongoClientURI(connectionString);
 		this.mongoClient = new MongoClient(uri);
@@ -68,10 +49,11 @@ public class MongoDBConnection {
 	
 	public void store(WaterFlowSensorDomain domain) {
 		Document dataCollected = new Document("flowRate", domain.getFlowRate())
-				.append("userID", domain.getUser())
-				.append("deviceID", domain.getDeviceId())
 				.append("description", domain.getDescription())
-				.append("timestamp", domain.getTimestamp());
+				.append("timestamp", domain.getTimestamp())
+				.append("username", domain.getUsername())
+				.append("deviceId", domain.getDeviceId())
+				.append("weekDay", domain.getWeekDay());
 		this.collection.insertOne(dataCollected);
 		//this.collection.deleteMany(new Document()); //para deletar todos os documentos da collection
 	}
