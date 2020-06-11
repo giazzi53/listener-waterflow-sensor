@@ -1,5 +1,6 @@
 package com.listener.waterFlowSensor.controller;
 
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
@@ -50,8 +51,9 @@ public class WaterFlowSensorController {
 	public void getData() {
 		this.mongoDB.openConnection();
 
+	    DecimalFormat df2 = new DecimalFormat("#.##");
 		double flowRate = Double.parseDouble(sendGETRequest(waterFlowURL));
-		this.domain.setFlowRate(flowRate);
+		this.domain.setFlowRate(Double.parseDouble(df2.format(flowRate)));
 		
 		String description = sendGETRequest(descriptionURL);
 		this.domain.setDescription(description);
