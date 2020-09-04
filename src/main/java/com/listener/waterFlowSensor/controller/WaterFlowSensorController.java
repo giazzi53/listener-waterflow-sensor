@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
-import com.listener.waterFlowSensor.domain.WaterFlowSensorDomain;
-import com.listener.waterFlowSensor.mongoDB.MongoDBConnection;
+import com.listener.waterFlowSensor.DAO.CacheRecordDAO;
+import com.listener.waterFlowSensor.DAO.DeviceDAO;
+import com.listener.waterFlowSensor.DTO.CacheRecordDTO;
+import com.listener.waterFlowSensor.DTO.DeviceDTO;
 
 @RestController
 public class WaterFlowSensorController {
@@ -33,15 +35,21 @@ public class WaterFlowSensorController {
 
 	@Value("${DESCRIPTION_URL}")
 	private String descriptionURL;
+	
+	@Value("${MILLIS_SINCE_CONNECTED_URL}")
+	private String millisSinceConnectedURL;
 
 	@Autowired
-	private WaterFlowSensorDomain domain;
-	
-	@Autowired
-	private MongoDBConnection mongoDB;
+	private DeviceDTO deviceDTO;
 
 	@Autowired
 	private RestTemplate restTemplate;
+	
+	@Autowired
+	private DeviceDAO deviceDAO;
+	
+	@Autowired
+	private CacheRecordDAO cacheRecordDAO;
 
 	private final Logger LOGGER = LoggerFactory.getLogger(WaterFlowSensorController.class);
 
@@ -49,37 +57,43 @@ public class WaterFlowSensorController {
 	@Async
 	@GetMapping(value = "/getData")
 	public void getData() {
-		this.mongoDB.openConnection();
-
 	    DecimalFormat df2 = new DecimalFormat("#.##");
 		double flowRate = Double.parseDouble(sendGETRequest(waterFlowURL));
-		this.domain.setFlowRate(Double.parseDouble(df2.format(flowRate)));
+		this.deviceDTO.setFlowRate(Double.parseDouble(df2.format(flowRate)));
 		
 		String description = sendGETRequest(descriptionURL);
-		this.domain.setDescription(description);
+		this.deviceDTO.setDescription(description);
 		
 		Date date = new Date();
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		this.domain.setTimestamp(dateFormat.format(date));
+		this.deviceDTO.setTimestamp(dateFormat.format(date));
+		
+		String millisSinceConnected = sendGETRequest(millisSinceConnectedURL);
+		this.deviceDTO.setMillisSinceConnected(Long.parseLong(millisSinceConnected));
 
 		String username = sendGETRequest(userURL);
-		this.domain.setUsername(username);
+		this.deviceDTO.setUsername(username);
 
 		String deviceId = sendGETRequest(deviceIdURL);
-		this.domain.setDeviceId(deviceId);
+		this.deviceDTO.setDeviceId(deviceId);
 		
 		String weekDay = LocalDate.now().getDayOfWeek().name();
-		this.domain.setWeekDay(weekDay);
-				
+		this.deviceDTO.setWeekDay(weekDay);
+								
 		try {
-			Gson gson = new Gson();
-			LOGGER.info("!!! Inserindo " + gson.toJson(this.domain) + " no MongoDB !!!!");
-			this.mongoDB.store(this.domain);
+			if(!this.cacheRecordDAO.existsByUsernameAndDeviceIdAndMillisSinceConnected(this.deviceDTO.getUsername(),
+					this.deviceDTO.getDeviceId(), this.deviceDTO.getMillisSinceConnected())) {
+				Gson gson = new Gson();
+				LOGGER.info("!!! Inserindo " + gson.toJson(this.deviceDTO) + " no MongoDB !!!!");
+				this.deviceDAO.insert(this.deviceDTO);
+				CacheRecordDTO cacheRecord = new CacheRecordDTO(this.deviceDTO.getUsername(),
+						this.deviceDTO.getDeviceId(), this.deviceDTO.getTimestamp(),
+						this.deviceDTO.getMillisSinceConnected());
+				this.cacheRecordDAO.insert(cacheRecord);
+			}
 		} catch (Exception e) {
 			LOGGER.error("Ocorreu um erro ao inserir no MongoDB", e);
 		}
-
-		this.mongoDB.closeConnection();
 	}
 
 	private String sendGETRequest(String URL) {
