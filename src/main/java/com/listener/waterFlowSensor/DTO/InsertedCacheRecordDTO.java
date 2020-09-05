@@ -11,8 +11,8 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "CacheRecordCollection")
-public class CacheRecordDTO {
+@Document(collection = "InsertedCacheRecordCollection")
+public class InsertedCacheRecordDTO {
 	
 	private String username;
 	private String deviceId;

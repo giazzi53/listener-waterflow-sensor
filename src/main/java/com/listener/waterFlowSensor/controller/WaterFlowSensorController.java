@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
-import com.listener.waterFlowSensor.DAO.CacheRecordDAO;
 import com.listener.waterFlowSensor.DAO.DeviceDAO;
-import com.listener.waterFlowSensor.DTO.CacheRecordDTO;
+import com.listener.waterFlowSensor.DAO.InsertedCacheRecordDAO;
 import com.listener.waterFlowSensor.DTO.DeviceDTO;
+import com.listener.waterFlowSensor.DTO.InsertedCacheRecordDTO;
 
 @RestController
 public class WaterFlowSensorController {
@@ -49,7 +49,7 @@ public class WaterFlowSensorController {
 	private DeviceDAO deviceDAO;
 	
 	@Autowired
-	private CacheRecordDAO cacheRecordDAO;
+	private InsertedCacheRecordDAO insertedCacheRecordDAO;
 
 	private final Logger LOGGER = LoggerFactory.getLogger(WaterFlowSensorController.class);
 
@@ -68,8 +68,7 @@ public class WaterFlowSensorController {
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		this.deviceDTO.setTimestamp(dateFormat.format(date));
 		
-		String millisSinceConnected = sendGETRequest(millisSinceConnectedURL);
-		this.deviceDTO.setMillisSinceConnected(Long.parseLong(millisSinceConnected));
+		long millisSinceConnected = Long.parseLong(sendGETRequest(millisSinceConnectedURL));
 
 		String username = sendGETRequest(userURL);
 		this.deviceDTO.setUsername(username);
@@ -81,15 +80,15 @@ public class WaterFlowSensorController {
 		this.deviceDTO.setWeekDay(weekDay);
 								
 		try {
-			if(!this.cacheRecordDAO.existsByUsernameAndDeviceIdAndMillisSinceConnected(this.deviceDTO.getUsername(),
-					this.deviceDTO.getDeviceId(), this.deviceDTO.getMillisSinceConnected())) {
+			if(!this.insertedCacheRecordDAO.existsByUsernameAndDeviceIdAndMillisSinceConnected(this.deviceDTO.getUsername(),
+					this.deviceDTO.getDeviceId(), millisSinceConnected)) {
 				Gson gson = new Gson();
 				LOGGER.info("!!! Inserindo " + gson.toJson(this.deviceDTO) + " no MongoDB !!!!");
 				this.deviceDAO.insert(this.deviceDTO);
-				CacheRecordDTO cacheRecord = new CacheRecordDTO(this.deviceDTO.getUsername(),
+				InsertedCacheRecordDTO cacheRecord = new InsertedCacheRecordDTO(this.deviceDTO.getUsername(),
 						this.deviceDTO.getDeviceId(), this.deviceDTO.getTimestamp(),
-						this.deviceDTO.getMillisSinceConnected());
-				this.cacheRecordDAO.insert(cacheRecord);
+						millisSinceConnected);
+				this.insertedCacheRecordDAO.insert(cacheRecord);
 			}
 		} catch (Exception e) {
 			LOGGER.error("Ocorreu um erro ao inserir no MongoDB", e);

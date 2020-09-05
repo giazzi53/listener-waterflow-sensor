@@ -26,9 +26,7 @@ public class DeviceDTO {
 	private String description;
 	@NotBlank
 	private String timestamp;
-	@NotBlank
-	private long millisSinceConnected;
-	@NotBlank
+	@NotBlank	
 	private String username;
 	@NotBlank
 	private String deviceId;
