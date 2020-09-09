@@ -20,7 +20,6 @@ import lombok.Setter;
 @JsonInclude(Include.NON_NULL)
 public class DeviceDTO {
 	
-//	private String _id;
 	@NotBlank
 	private double flowRate;
 	@NotBlank
