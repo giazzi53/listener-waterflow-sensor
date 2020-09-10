@@ -4,7 +4,9 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
@@ -37,6 +39,9 @@ public class ConsumptionDataService {
 
 	@Autowired
 	private RestTemplate restTemplate;
+	
+	@Autowired
+	private Gson gson;
 
 	@Autowired
 	private DeviceDAO deviceDAO;
@@ -44,22 +49,26 @@ public class ConsumptionDataService {
 	@Autowired
 	private InsertedCacheRecordDAO insertedCacheRecordDAO;
 
+	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	
+	private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
+	
+	private final int DAYS_TO_BE_ADDED = 7;
+
 	public DeviceDTO createConsumptionObject() throws Exception {
 		DeviceDTO deviceDTO = null;
 
 		try {
-			String flowRateString = sendGETRequest(waterFlowURL);
+			String flowRateString = sendGETRequest(this.waterFlowURL);
 			double flowRate = formatToTwoDecimalPlaces(flowRateString);
-			// double flowRate =
-			// formatToTwoDecimalPlaces(Double.parseDouble(flowRateString));
 
-			String description = sendGETRequest(descriptionURL);
+			String description = sendGETRequest(this.descriptionURL);
 
 			String timestamp = generateTimestamp();
 
-			String username = sendGETRequest(userURL);
+			String username = sendGETRequest(this.userURL);
 
-			String deviceId = sendGETRequest(deviceIdURL);
+			String deviceId = sendGETRequest(this.deviceIdURL);
 
 			String weekDay = getWeekDay();
 
@@ -67,7 +76,6 @@ public class ConsumptionDataService {
 
 		} catch (Exception e) {
 			log.severe("Error while generating consuimption object " + e);
-			
 			throw new Exception(e);
 		}
 
@@ -75,7 +83,7 @@ public class ConsumptionDataService {
 	}
 
 	private String sendGETRequest(String URL) throws Exception {
-		String responseString = restTemplate.getForObject(URL, String.class);
+		String responseString = this.restTemplate.getForObject(URL, String.class);
 
 		if (responseString == null) {
 			throw new Exception("There was an error while sending a GET request to endpoint " + URL);
@@ -117,10 +125,7 @@ public class ConsumptionDataService {
 
 	private double formatToTwoDecimalPlaces(String flowRateString) throws Exception {
 		try {
-			DecimalFormat df2 = new DecimalFormat("#.##");
-
-			return Double.parseDouble(df2.format(flowRateString));
-
+			return Double.parseDouble(this.decimalFormat.format(flowRateString));
 		} catch (Exception e) {
 			throw new Exception("There was an error while formatting value " +
 								flowRateString + " to two decimal places");
@@ -130,11 +135,7 @@ public class ConsumptionDataService {
 	private String generateTimestamp() throws Exception {
 		try {
 			Date date = new Date();
-
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-			return dateFormat.format(date);
-
+			return this.dateFormat.format(date);
 		} catch (Exception e) {
 			throw new Exception("There was an error while generating timestamp");
 		}
@@ -149,21 +150,85 @@ public class ConsumptionDataService {
 	}
 	
 	public void insertIntoDB(DeviceDTO deviceDTO) throws Exception {
-		long millisSinceConnected = Long.parseLong(sendGETRequest(millisSinceConnectedURL));
+		long millisSinceConnected = Long.parseLong(sendGETRequest(this.millisSinceConnectedURL));
 
+		if(!this.insertedCacheRecordDAO
+				.existsByUsernameAndDeviceIdAndMillisSinceConnected(
+				deviceDTO.getUsername(), deviceDTO.getDeviceId(), millisSinceConnected)) {
+			
+			this.insertIntoDeviceCollection(deviceDTO);
+			
+			InsertedCacheRecordDTO insertedCacheRecordDTO = new InsertedCacheRecordDTO(
+					deviceDTO.getUsername(), deviceDTO.getDeviceId(),
+					deviceDTO.getTimestamp(), millisSinceConnected);
+			
+			this.insertIntoCacheRecordCollection(insertedCacheRecordDTO);
+		}
+	}
+	
+	private void insertIntoDeviceCollection(DeviceDTO deviceDTO) throws Exception {
 		try {
-			if(!this.insertedCacheRecordDAO.existsByUsernameAndDeviceIdAndMillisSinceConnected(deviceDTO.getUsername(),
-					deviceDTO.getDeviceId(), millisSinceConnected)) {
-				Gson gson = new Gson();
-				log.info("!!! Inserindo " + gson.toJson(deviceDTO) + " no MongoDB !!!!");
-				this.deviceDAO.insert(deviceDTO);
-				InsertedCacheRecordDTO cacheRecord = new InsertedCacheRecordDTO(deviceDTO.getUsername(),
-						deviceDTO.getDeviceId(), deviceDTO.getTimestamp(),
-						millisSinceConnected);
-				this.insertedCacheRecordDAO.insert(cacheRecord);
-			}
+			log.info("Inserting " + this.gson.toJson(deviceDTO) + " into DeviceCollection");
+			
+			this.deviceDAO.insert(deviceDTO);
+			
+			log.info("Device object inserted successfully");
+
+		} catch(Exception e) {
+			log.severe("There was an error while inserting " + this.gson.toJson(deviceDTO)
+					   + " into DeviceCollection " + e);
+			throw new Exception(e);
+		}
+	}
+	
+	private void insertIntoCacheRecordCollection(InsertedCacheRecordDTO insertedCacheRecordDTO) throws Exception {
+		try {
+			log.info("Inserting " + this.gson.toJson(insertedCacheRecordDTO) +
+					 " into InsertedCacheRecordCollection");
+			
+			this.insertedCacheRecordDAO.insert(insertedCacheRecordDTO);
+			
+			log.info("Cache record inserted successfully");
+
 		} catch (Exception e) {
-			log.severe("Ocorreu um erro ao inserir no MongoDB " + e);
+			log.severe("There was an error while inserting " + this.gson.toJson(insertedCacheRecordDTO)
+			+ " into InsertedCacheRecordCollection " + e);
+			throw new Exception(e);
+		}
+	}
+	
+	public void incrementAllRecordsByOneWeek() throws Exception {
+		log.info("Incrementing all records by one week");
+		
+		List<DeviceDTO> allDeviceRecords = this.deviceDAO.findAll();
+		
+		log.info("Total records to be updated: " + allDeviceRecords.size());
+
+		int count = 1;
+		
+		for(DeviceDTO device : allDeviceRecords) {
+			Date oldTimestamp = this.dateFormat.parse(device.getTimestamp());
+						
+			String newTimestamp = this.getNewTimestamp(oldTimestamp);
+			
+			log.info("Record #" + count + " - Old object " + this.gson.toJson(device));
+			
+			device.setTimestamp(newTimestamp);
+									
+			this.insertIntoDeviceCollection(device);
+						
+			count++;
+		}
+	}
+	
+	private String getNewTimestamp(Date oldTimestamp) throws Exception {
+		try {
+			Date newTimestamp = DateUtils.addDays(oldTimestamp, DAYS_TO_BE_ADDED);
+			
+			return this.dateFormat.format(newTimestamp);
+			
+		} catch (Exception e) {
+			throw new Error("There was an error while getting the new timestamp to be added " + e);
 		}
 	}
 }
