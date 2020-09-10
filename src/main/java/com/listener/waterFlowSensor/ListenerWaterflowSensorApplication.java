@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 
 import com.listener.waterFlowSensor.DTO.DeviceDTO;
+import com.listener.waterFlowSensor.service.ConsumptionDataService;
 
 @SpringBootApplication
 @EnableAsync
@@ -27,5 +28,10 @@ public class ListenerWaterflowSensorApplication {
 	public DeviceDTO deviceDTO() {
 		return new DeviceDTO();
 	}
-
+	
+	@Bean
+	public ConsumptionDataService consumptionDataService() {
+		return new ConsumptionDataService();
+	}
+	
 }

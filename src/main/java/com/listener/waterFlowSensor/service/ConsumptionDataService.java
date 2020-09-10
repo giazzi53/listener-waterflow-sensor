@@ -125,7 +125,8 @@ public class ConsumptionDataService {
 
 	private double formatToTwoDecimalPlaces(String flowRateString) throws Exception {
 		try {
-			return Double.parseDouble(this.decimalFormat.format(flowRateString));
+			double flowRateDouble = Double.parseDouble(flowRateString);
+			return Double.parseDouble(this.decimalFormat.format(flowRateDouble));	
 		} catch (Exception e) {
 			throw new Exception("There was an error while formatting value " +
 								flowRateString + " to two decimal places");
@@ -163,6 +164,8 @@ public class ConsumptionDataService {
 					deviceDTO.getTimestamp(), millisSinceConnected);
 			
 			this.insertIntoCacheRecordCollection(insertedCacheRecordDTO);
+		} else {
+			log.warning("Device " + deviceDTO.getDescription() + " is disconnected, not inserting again same data");
 		}
 	}
 	
