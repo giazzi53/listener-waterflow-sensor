@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.listener.waterFlowSensor.DTO.DeviceDTO;
@@ -30,25 +29,14 @@ public class ConsumptionDataController {
 		try {
 			log.info("Sending new request to get collected data");
 			
-			deviceDTO = this.consumptionDataService.createConsumptionObject();
+			deviceDTO = consumptionDataService.createConsumptionObject();
 						
-			this.consumptionDataService.insertIntoDB(deviceDTO);
+			consumptionDataService.insertIntoDB(deviceDTO);
 			
 		} catch (Exception e) {
 			return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 		return new ResponseEntity<DeviceDTO>(deviceDTO, HttpStatus.OK);
-	}
-	
-	@PutMapping(value = "/increment-all-records-by-one-week")
-	public ResponseEntity<String>incrementAllRecordsByOneWeek() {
-		try {
-			this.consumptionDataService.incrementAllRecordsByOneWeek();
-		} catch (Exception e) {
-			return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-		
-		return new ResponseEntity<String>("Updated all records successfully", HttpStatus.OK);
 	}
 }

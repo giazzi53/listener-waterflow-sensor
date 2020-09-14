@@ -4,9 +4,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
-import java.util.List;
 
-import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
@@ -53,8 +51,6 @@ public class ConsumptionDataService {
 	
 	private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
 	
-	private final int DAYS_TO_BE_ADDED = 7;
-
 	public DeviceDTO createConsumptionObject() throws Exception {
 		DeviceDTO deviceDTO = null;
 
@@ -83,7 +79,7 @@ public class ConsumptionDataService {
 	}
 
 	private String sendGETRequest(String URL) throws Exception {
-		String responseString = this.restTemplate.getForObject(URL, String.class);
+		String responseString = restTemplate.getForObject(URL, String.class);
 
 		if (responseString == null) {
 			throw new Exception("There was an error while sending a GET request to endpoint " + URL);
@@ -153,7 +149,7 @@ public class ConsumptionDataService {
 	public void insertIntoDB(DeviceDTO deviceDTO) throws Exception {
 		long millisSinceConnected = Long.parseLong(sendGETRequest(this.millisSinceConnectedURL));
 
-		if(!this.insertedCacheRecordDAO
+		if(!insertedCacheRecordDAO
 				.existsByUsernameAndDeviceIdAndMillisSinceConnected(
 				deviceDTO.getUsername(), deviceDTO.getDeviceId(), millisSinceConnected)) {
 			
@@ -169,16 +165,16 @@ public class ConsumptionDataService {
 		}
 	}
 	
-	private void insertIntoDeviceCollection(DeviceDTO deviceDTO) throws Exception {
+	public void insertIntoDeviceCollection(DeviceDTO deviceDTO) throws Exception {
 		try {
-			log.info("Inserting " + this.gson.toJson(deviceDTO) + " into DeviceCollection");
+			log.info("Inserting " + gson.toJson(deviceDTO) + " into DeviceCollection");
 			
-			this.deviceDAO.insert(deviceDTO);
+			deviceDAO.insert(deviceDTO);
 			
 			log.info("Device object inserted successfully");
 
 		} catch(Exception e) {
-			log.severe("There was an error while inserting " + this.gson.toJson(deviceDTO)
+			log.severe("There was an error while inserting " + gson.toJson(deviceDTO)
 					   + " into DeviceCollection " + e);
 			throw new Exception(e);
 		}
@@ -186,52 +182,22 @@ public class ConsumptionDataService {
 	
 	private void insertIntoCacheRecordCollection(InsertedCacheRecordDTO insertedCacheRecordDTO) throws Exception {
 		try {
-			log.info("Inserting " + this.gson.toJson(insertedCacheRecordDTO) +
+			log.info("Inserting " + gson.toJson(insertedCacheRecordDTO) +
 					 " into InsertedCacheRecordCollection");
 			
-			this.insertedCacheRecordDAO.insert(insertedCacheRecordDTO);
+			insertedCacheRecordDAO.insert(insertedCacheRecordDTO);
 			
 			log.info("Cache record inserted successfully");
 
 		} catch (Exception e) {
-			log.severe("There was an error while inserting " + this.gson.toJson(insertedCacheRecordDTO)
+			log.severe("There was an error while inserting " + gson.toJson(insertedCacheRecordDTO)
 			+ " into InsertedCacheRecordCollection " + e);
 			throw new Exception(e);
 		}
 	}
-	
-	public void incrementAllRecordsByOneWeek() throws Exception {
-		log.info("Incrementing all records by one week");
-		
-		List<DeviceDTO> allDeviceRecords = this.deviceDAO.findAll();
-		
-		log.info("Total records to be updated: " + allDeviceRecords.size());
 
-		int count = 1;
-		
-		for(DeviceDTO device : allDeviceRecords) {
-			Date oldTimestamp = this.dateFormat.parse(device.getTimestamp());
-						
-			String newTimestamp = this.getNewTimestamp(oldTimestamp);
-			
-			log.info("Record #" + count + " - Old object " + this.gson.toJson(device));
-			
-			device.setTimestamp(newTimestamp);
-									
-			this.insertIntoDeviceCollection(device);
-						
-			count++;
-		}
+	public SimpleDateFormat getDateFormat() {
+		return dateFormat;
 	}
 	
-	private String getNewTimestamp(Date oldTimestamp) throws Exception {
-		try {
-			Date newTimestamp = DateUtils.addDays(oldTimestamp, DAYS_TO_BE_ADDED);
-			
-			return this.dateFormat.format(newTimestamp);
-			
-		} catch (Exception e) {
-			throw new Error("There was an error while getting the new timestamp to be added " + e);
-		}
-	}
 }
