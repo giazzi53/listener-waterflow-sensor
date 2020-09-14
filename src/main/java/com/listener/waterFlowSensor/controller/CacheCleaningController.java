@@ -3,14 +3,15 @@ package com.listener.waterFlowSensor.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.listener.waterFlowSensor.service.CacheCleaningService;
 
 @RestController
+@RequestMapping("/v1/cache")
 public class CacheCleaningController {
 	
 	@Autowired
@@ -19,8 +20,7 @@ public class CacheCleaningController {
 	private final String TEN_MINUTES_CRON_EXPRESSION = "0 */10 * ? * *";
 
 	@Scheduled(cron = TEN_MINUTES_CRON_EXPRESSION)
-	@Async
-	@DeleteMapping(value = "/v1/cache/inserted-records")
+	@DeleteMapping(value = "/inserted-records")
 	public ResponseEntity<String>CleanInsertedRecordsCache() {
 		try {
 			cacheCleaningService.cleanInsertedRecordsCache();
