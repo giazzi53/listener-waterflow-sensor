@@ -20,7 +20,7 @@ public class CacheCleaningController {
 
 	@Scheduled(cron = TEN_MINUTES_CRON_EXPRESSION)
 	@Async
-	@DeleteMapping(value = "/clean-inserted-records-cache")
+	@DeleteMapping(value = "/v1/cache/inserted-records")
 	public ResponseEntity<String>CleanInsertedRecordsCache() {
 		try {
 			cacheCleaningService.cleanInsertedRecordsCache();

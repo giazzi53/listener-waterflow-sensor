@@ -22,7 +22,7 @@ public class ConsumptionDataController {
 
 	@Scheduled(fixedRate = 30000)
 	@Async
-	@GetMapping(value = "/get-consumption-data")
+	@GetMapping(value = "/v1/data/consumption")
 	public ResponseEntity<?> getConsumptionData() {
 		DeviceDTO deviceDTO = null;
 		

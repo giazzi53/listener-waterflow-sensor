@@ -16,7 +16,7 @@ public class WeeklyRecordManagementController {
 	private WeeklyRecordManagementService weeklyRecordManagementService;
 
 	@Async
-	@PutMapping(value = "/increment-all-records-by-one-week")
+	@PutMapping(value = "/v1/records")
 	public ResponseEntity<String>incrementAllRecordsByOneWeek() {
 		try {
 			weeklyRecordManagementService.incrementAllRecordsByOneWeek();
